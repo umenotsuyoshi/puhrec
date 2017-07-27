@@ -1,0 +1,79 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<XMLDB PATH="mod/puhrec/db" VERSION="20101203" COMMENT="XMLDB file for Moodle mod/puhrec" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="../../../lib/xmldb/xmldb.xsd">
+	<TABLES>
+		<TABLE NAME="puhrec" COMMENT="Voice Recorder" NEXT="puhrec_messages">
+			<FIELDS>
+				<FIELD NAME="id" TYPE="int" LENGTH="10" NOTNULL="true" UNSIGNED="true" SEQUENCE="true"/>
+				<FIELD NAME="course" TYPE="int" LENGTH="10" NOTNULL="true" UNSIGNED="true" SEQUENCE="false" COMMENT="Course puhrec activity belongs to"/>
+				<FIELD NAME="name" TYPE="char" LENGTH="255" NOTNULL="true" SEQUENCE="false" COMMENT="name field for moodle instances"/>
+				<FIELD NAME="intro" TYPE="text" NOTNULL="true" SEQUENCE="false" COMMENT="General introduction of the puhrec activity"/>
+				<FIELD NAME="introformat" TYPE="int" LENGTH="4" NOTNULL="true" UNSIGNED="true" DEFAULT="0" SEQUENCE="false" COMMENT="Format of the intro field (MOODLE, HTML, MARKDOWN...)"/>
+				<!-- 練習用テキスト -->
+				<FIELD NAME="practicetext" TYPE="text" NOTNULL="true" SEQUENCE="false" COMMENT="General introduction of the puhrec activity"/>
+				<FIELD NAME="lang" TYPE="text" NOTNULL="true" SEQUENCE="false" COMMENT="General introduction of the puhrec activity"/>
+				<FIELD NAME="timecreated" TYPE="int" LENGTH="10" NOTNULL="true" UNSIGNED="true" SEQUENCE="false"/>
+				<FIELD NAME="timemodified" TYPE="int" LENGTH="10" NOTNULL="true" UNSIGNED="true" DEFAULT="0" SEQUENCE="false"/>
+				<FIELD NAME="grade" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="100" SEQUENCE="false" COMMENT="The maximum grade. Can be negative to indicate the use of a scale."/>
+				<!-- 録音時間、録音数 -->
+                <FIELD NAME="maxduration" TYPE="int" LENGTH="10" NOTNULL="true" UNSIGNED="false" DEFAULT="60" SEQUENCE="false" COMMENT=""/>
+                <FIELD NAME="maxnumber" TYPE="int" LENGTH="10" NOTNULL="true" UNSIGNED="false" DEFAULT="0" SEQUENCE="false" COMMENT=""/>
+				<!-- 開始日、終了日、提出日以降の送信を阻止する  -->
+                <FIELD NAME="timeavailable" TYPE="int" LENGTH="10" NOTNULL="true" UNSIGNED="true" DEFAULT="0" SEQUENCE="false" COMMENT="" />
+				<FIELD NAME="timedue" TYPE="int" LENGTH="10" NOTNULL="true" UNSIGNED="true" DEFAULT="0" SEQUENCE="false" COMMENT="" />
+				<FIELD NAME="preventlate" TYPE="int" LENGTH="1" NOTNULL="true" UNSIGNED="false" DEFAULT="0" SEQUENCE="false" COMMENT=""/>
+			</FIELDS>
+			<KEYS>
+				<KEY NAME="primary" TYPE="primary" FIELDS="id"/>
+			</KEYS>
+			<INDEXES>
+				<INDEX NAME="course" UNIQUE="false" FIELDS="course"/>
+			</INDEXES>
+		</TABLE>
+		<!-- 教員から学生へのコメント -->
+		<TABLE NAME="puhrec_messages" COMMENT="VoiceRec messages in each VoiceRec activity" PREVIOUS="puhrec" NEXT="puhrec_audios">
+			<FIELDS>
+				<FIELD NAME="id" TYPE="int" LENGTH="10" NOTNULL="true" UNSIGNED="true" SEQUENCE="true"  NEXT="puhrecid"/>
+				<FIELD NAME="puhrecid" TYPE="int" LENGTH="10" NOTNULL="true" UNSIGNED="true" DEFAULT="0" SEQUENCE="false"  PREVIOUS="id" NEXT="userid"/>
+				<FIELD NAME="userid" TYPE="int" LENGTH="10" NOTNULL="true" UNSIGNED="true" DEFAULT="0" SEQUENCE="false"  PREVIOUS="puhrecid" NEXT="message"/>
+				<FIELD NAME="message" TYPE="text" LENGTH="small" NOTNULL="false" SEQUENCE="false"  PREVIOUS="userid" NEXT="supplement"/>
+				<FIELD NAME="supplement" TYPE="text" LENGTH="small" NOTNULL="false" SEQUENCE="false"  PREVIOUS="message" NEXT="supplementformat"/>
+				<FIELD NAME="supplementformat" TYPE="text" LENGTH="small" NOTNULL="false" SEQUENCE="false" PREVIOUS="supplement" NEXT="audio"/>
+				<FIELD NAME="audio" TYPE="text" LENGTH="small" NOTNULL="false" SEQUENCE="false"  PREVIOUS="supplementformat" NEXT="comments"/>
+				<FIELD NAME="comments" TYPE="text" LENGTH="small" NOTNULL="false" SEQUENCE="false"  PREVIOUS="audio" NEXT="commentsformat"/>
+				<FIELD NAME="commentsformat" TYPE="text" LENGTH="small" NOTNULL="false" SEQUENCE="false" PREVIOUS="comments" NEXT="commentedby"/>
+				<FIELD NAME="commentedby" TYPE="int" LENGTH="10" NOTNULL="false" UNSIGNED="true" SEQUENCE="false"  PREVIOUS="commentsformat" NEXT="playcount"/>
+				<FIELD NAME="playcount" TYPE="int" LENGTH="10" NOTNULL="false" UNSIGNED="true" DEFAULT="0" SEQUENCE="false"  PREVIOUS="commentedby" NEXT="grade"/>
+				<FIELD NAME="grade" TYPE="int" LENGTH="4" NOTNULL="true" UNSIGNED="false" DEFAULT="0" SEQUENCE="false"  PREVIOUS="playcount" NEXT="timestamp"/>
+				<FIELD NAME="timestamp" TYPE="int" LENGTH="10" NOTNULL="true" UNSIGNED="true" DEFAULT="0" SEQUENCE="false"  PREVIOUS="grade" NEXT="locked"/>
+				<FIELD NAME="locked" TYPE="int" LENGTH="1" NOTNULL="true" UNSIGNED="true" DEFAULT="0" SEQUENCE="false"  PREVIOUS="timestamp"/>
+			</FIELDS>
+			<KEYS>
+				<KEY NAME="primary" TYPE="primary" FIELDS="id" NEXT="puhrecid"/>
+				<KEY NAME="puhrecid" TYPE="foreign" FIELDS="puhrecid" REFTABLE="puhrec" REFFIELDS="id" PREVIOUS="primary"/>
+			</KEYS>
+			<INDEXES>
+				<INDEX NAME="userid" UNIQUE="false" FIELDS="userid"/>
+			</INDEXES>
+		</TABLE>
+		<!-- 学生の録音時の情報 -->
+		<TABLE NAME="puhrec_audios" COMMENT="puhrec audios for each user" PREVIOUS="puhrec_messages">
+			<FIELDS>
+				<FIELD NAME="id" TYPE="int" LENGTH="10" NOTNULL="true" UNSIGNED="true" SEQUENCE="true"  NEXT="puhrecid"/>
+				<FIELD NAME="puhrecid" TYPE="int" LENGTH="10" NOTNULL="true" UNSIGNED="true" DEFAULT="0" SEQUENCE="false"  PREVIOUS="id" NEXT="userid"/>
+				<FIELD NAME="userid" TYPE="int" LENGTH="10" NOTNULL="false" UNSIGNED="true" DEFAULT="0" SEQUENCE="false"  PREVIOUS="puhrecid" NEXT="type"/>
+				<FIELD NAME="type" TYPE="int" LENGTH="1" NOTNULL="true" UNSIGNED="true" DEFAULT="0" SEQUENCE="false"  PREVIOUS="userid" NEXT="title"/>
+				<FIELD NAME="title" TYPE="text" LENGTH="small" NOTNULL="false" SEQUENCE="false"  PREVIOUS="type" NEXT="transcription"/>
+				<FIELD NAME="transcription" TYPE="text" LENGTH="small" NOTNULL="false" SEQUENCE="false"  PREVIOUS="title" NEXT="name"/>
+				<FIELD NAME="name" TYPE="text" LENGTH="small" NOTNULL="true" SEQUENCE="false"  PREVIOUS="transcription" NEXT="timecreated"/>
+				<FIELD NAME="timecreated" TYPE="int" LENGTH="10" NOTNULL="true" UNSIGNED="true" DEFAULT="0" SEQUENCE="false"  PREVIOUS="name"/>
+			</FIELDS>
+			<KEYS>
+				<KEY NAME="primary" TYPE="primary" FIELDS="id" NEXT="puhrecid"/>
+				<KEY NAME="puhrecid" TYPE="foreign" FIELDS="puhrecid" REFTABLE="puhrec" REFFIELDS="id" PREVIOUS="primary"/>
+			</KEYS>
+			<INDEXES>
+				<INDEX NAME="userid" UNIQUE="false" FIELDS="userid"/>
+			</INDEXES>
+		</TABLE>
+	</TABLES>
+</XMLDB>
