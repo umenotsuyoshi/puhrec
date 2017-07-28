@@ -18,6 +18,17 @@ M.mod_puhrec = {};
 /**
  * The JavaScript used in the puhrec activity module
  *
+ * recognition.continuousについて
+ * デフォルト設定は、recognition.continuous=false。
+ * recognition.continuous=falseのままだと音声認識ができた時点でonresultイベントが発生し、以降継続録音しても認識はされない（文字化されない）
+ * recognition.continuous=trueにすると、継続して認識されるが、録音音声が一拍遅れて聞こえてくるようになる現象が発生する。
+ * 自分の声のピッチが遅くなって聞こえるため非常に発話し難い。（遅れるのではなくスロー再生されるているように感じる）
+ * recognition.continuous=falseだと遅れがないのではなく目立たないだけかもしれない。
+ * 
+ * TODO:調査・調整要。
+ * 
+ * recognition.interimResults = false // 中間解析結果を返さない。defalut=false
+ *
  * @author     
  * @author     
  * @package    mod
@@ -33,6 +44,7 @@ M.mod_puhrec.init = function(yui, maxduration, textlang) {
 	var buffArray  = new Array();
 	var limitTimerID = 0;
 	var restart_maxduration = maxduration;
+	var rec_satus = false;
 	/*
 	 * 現在（2016.08）Chromeは、mediaRecorder.ondataavailable(e)のe.data.typeを空で呼び出す。
 	 * デフォルト値をChrome(audio/webm)にしておいて、Firefox（audio/ogg)で上書きで回避。
@@ -62,8 +74,9 @@ M.mod_puhrec.init = function(yui, maxduration, textlang) {
     var recognizing;
     var recognition = new SpeechRecognition();
     recognition.continuous = true; // 連続音節認識
+    recognition.interimResults = false // 中間解析結果を返さない
     recognition.lang = textlang;
-//    recognition.onend = reset;
+//    recognition.onend = reset; //
     recognition.onresult = function (event) {
       for (var i = event.resultIndex; i < event.results.length; ++i) {
         var result = event.results[i];
@@ -217,13 +230,15 @@ M.mod_puhrec.init = function(yui, maxduration, textlang) {
 			/**
 			 * mediaRecorder.startの直後停止ボタンを有効にすると録音、停止と連続してボタンされ
 			 * startする前に停止処理が走行する。タイマーが止まらない。
+			 * onstart発生後でもタイマーが停止しない場合があり（録音は停止）、録音中フラグを設定。
 			 */
 			mediaRecorder.onstart = function(e) {
 				$("#puhrec_stop").removeAttr('disabled');
+				rec_satus = true;
+				limitTimerID = limit_timer();
 			}
 			var timeslice = 1000; // The number of milliseconds of data to return in a single Blob.
 			mediaRecorder.start(timeslice);
-			limitTimerID = limit_timer();
 			$("#puhrec_rec").attr('disabled','disabled');
 			$("#puhrec_check").attr('disabled','disabled');
 			$("#puhrec_recording_audio")[0].src='';
@@ -253,6 +268,7 @@ M.mod_puhrec.init = function(yui, maxduration, textlang) {
 		clearTimeout(limitTimerID);
 		mediaRecorder.stop();
 		mediaStream.getAudioTracks()[0].stop();
+		rec_satus = false;
 		$("#puhrec_rec").removeAttr('disabled');
 		$("#puhrec_stop").attr('disabled','disabled');
 		$("#puhrec_check").removeAttr('disabled');
@@ -281,7 +297,7 @@ M.mod_puhrec.init = function(yui, maxduration, textlang) {
 		sample=sample.replace(/[\s]+/g,'');
 		reced=reced.replace(/[\s]+/g,'');
 		var score = levenshteinDistance(sample, reced);
-		var len =$('#puhrec_playtxt').text().length;
+		var len =(sample.length > reced.length)?sample.length : reced.length;
 		score = Math.round(((len - score )/len) * 100);
 		$("#levenshteinDistance").empty();
 		$("#levenshteinDistance").text(score + "点");
@@ -343,8 +359,8 @@ M.mod_puhrec.init = function(yui, maxduration, textlang) {
 	 * 録音制限時間タイマー
      */
 	limit_timer = function(){
-		maxduration--;
 		$('#rectime_timer').text(maxduration);
+		maxduration--;
 		if(maxduration <= 0){
 			stop_recording();
 			alert(M.str.puhrec.timeoutmessage);
@@ -353,7 +369,9 @@ M.mod_puhrec.init = function(yui, maxduration, textlang) {
 		if(maxduration <= 10){
 			$('#rectime_timer').css('color','red!important');
 		}
-		limitTimerID = setTimeout(limit_timer, 1000);
+		if(rec_satus == true){
+			limitTimerID = setTimeout(limit_timer, 1000);
+		}
 	}
 
 	
