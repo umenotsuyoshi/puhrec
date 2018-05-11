@@ -45,20 +45,58 @@ class backup_puhrec_activity_structure_step extends backup_activity_structure_st
         // Get know if we are including userinfo.
         $userinfo = $this->get_setting_value('userinfo');
 
+        // https://docs.moodle.org/dev/Backup_2.0_for_developers
         // Define the root element describing the puhrec instance.
         $puhrec = new backup_nested_element('puhrec', array('id'), array(
-            'name', 'intro', 'introformat', 'grade'));
+            'course', 'name', 'intro', 'introformat', 'practicetext','lang','timeavailable',
+            'timedue', 'grade', 'maxduration', 'maxnumber', 'preventlate',
+            'permission', 'timecreated', 'timemodified'));
 
-        // If we had more elements, we would build the tree here.
+        $messages = new backup_nested_element('messages');
+
+        $message = new backup_nested_element('message', array('id'), array(
+            'userid', 'message', 'supplement', 'supplementformat',
+            'audio', 'comments', 'commentsformat',
+            'commentedby', 'playcount','grade', 'timestamp', 'locked'));
+
+        $audios = new backup_nested_element('audios');
+
+        $audio = new backup_nested_element('audio', array('id'), array(
+            'userid', 'type', 'title', 'name', 'timecreated'));
+
+        // Build the tree
+        $puhrec->add_child($messages);
+        $messages->add_child($message);
+        $puhrec->add_child($audios);
+        $audios->add_child($audio);
 
         // Define data sources.
         $puhrec->set_source_table('puhrec', array('id' => backup::VAR_ACTIVITYID));
+		if ($userinfo) {
+		    $message->set_source_sql('
+                SELECT *
+                  FROM {puhrec_messages}
+                  WHERE puhrecid = ?',
+		        array(backup::VAR_PARENTID));
+		    $audio->set_source_table('puhrec_audios', array('puhrecid' => backup::VAR_PARENTID));
 
+		}
         // If we were referring to other tables, we would annotate the relation
         // with the element's annotate_ids() method.
 
+		// Define id annotations
+		$puhrec->annotate_ids('scale', 'grade');
+		$message->annotate_ids('user', 'userid');
+		$message->annotate_ids('user', 'commentedby');
+		$audio->annotate_ids('user', 'userid');
+
+
         // Define file annotations (we do not use itemid in this example).
-        $puhrec->annotate_files('mod_puhrec', 'intro', null);
+		$puhrec->annotate_files('mod_puhrec', 'intro', null);
+		$message->annotate_files('mod_puhrec', 'message', 'id');
+        $puhrec->annotate_files('mod_puhrec', 'audio', 'id');
+
+
 
         // Return the root element (puhrec), wrapped into standard activity structure.
         return $this->prepare_activity_structure($puhrec);

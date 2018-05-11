@@ -63,11 +63,11 @@ class backup_puhrec_activity_task extends backup_activity_task {
 
         // Link to the list of puhrecs.
         $search = '/('.$base.'\/mod\/puhrec\/index.php\?id\=)([0-9]+)/';
-        $content = preg_replace($search, '$@puhrecINDEX*$2@$', $content);
+        $content = preg_replace($search, '$@PUHRECINDEX*$2@$', $content);
 
         // Link to puhrec view by moduleid.
         $search = '/('.$base.'\/mod\/puhrec\/view.php\?id\=)([0-9]+)/';
-        $content = preg_replace($search, '$@puhrecVIEWBYID*$2@$', $content);
+        $content = preg_replace($search, '$@PUHRECVIEWBYID*$2@$', $content);
 
         return $content;
     }

@@ -41,17 +41,19 @@ class restore_puhrec_activity_structure_step extends restore_activity_structure_
     protected function define_structure() {
 
         $paths = array();
+        $userinfo = $this->get_setting_value('userinfo');
+
         $paths[] = new restore_path_element('puhrec', '/activity/puhrec');
+        if ($userinfo) {
+            $paths[] = new restore_path_element('puhrec_message', '/activity/puhrec/messages/message');
+            $paths[] = new restore_path_element('puhrec_audio', '/activity/puhrec/audios/audio');
+        }
+
 
         // Return the paths wrapped into standard activity structure.
         return $this->prepare_activity_structure($paths);
     }
 
-    /**
-     * Process the given restore path element data
-     *
-     * @param array $data parsed element data
-     */
     protected function process_puhrec($data) {
         global $DB;
 
@@ -59,22 +61,46 @@ class restore_puhrec_activity_structure_step extends restore_activity_structure_
         $oldid = $data->id;
         $data->course = $this->get_courseid();
 
-        if (empty($data->timecreated)) {
-            $data->timecreated = time();
-        }
-
-        if (empty($data->timemodified)) {
-            $data->timemodified = time();
-        }
-
-        if ($data->grade < 0) {
-            // Scale found, get mapping.
+        $data->timeavailable = $this->apply_date_offset($data->timeavailable);
+        $data->timedue = $this->apply_date_offset($data->timedue);
+        if ($data->grade < 0) { // scale found, get mapping
             $data->grade = -($this->get_mappingid('scale', abs($data->grade)));
         }
+        $data->timecreated = $this->apply_date_offset($data->timecreated);
+        $data->timemodified = $this->apply_date_offset($data->timemodified);
 
-        // Create the puhrec instance.
+        // insert the puhrec record
         $newitemid = $DB->insert_record('puhrec', $data);
+        // immediately after inserting "activity" record, call this
         $this->apply_activity_instance($newitemid);
+    }
+
+    protected function process_puhrec_message($data) {
+        global $DB;
+
+        $data = (object)$data;
+        $oldid = $data->id;
+
+        $data->puhrecid = $this->get_new_parentid('puhrec');
+        $data->userid = $this->get_mappingid('user', $data->userid);
+        $data->commentedby = $this->get_mappingid('user', $data->commentedby);
+        $data->timestamp = $this->apply_date_offset($data->timestamp);
+
+        $newitemid = $DB->insert_record('puhrec_messages', $data);
+        $this->set_mapping('puhrec_message', $oldid, $newitemid, true);
+    }
+
+    protected function process_puhrec_audio($data) {
+        global $DB;
+
+        $data = (object)$data;
+        $oldid = $data->id;
+
+        $data->puhrecid = $this->get_new_parentid('puhrec');
+        $data->userid = $this->get_mappingid('user', $data->userid);
+        $data->timecreated = $this->apply_date_offset($data->timecreated);
+
+        $newitemid = $DB->insert_record('puhrec_audios', $data);
     }
 
     /**
@@ -83,5 +109,8 @@ class restore_puhrec_activity_structure_step extends restore_activity_structure_
     protected function after_execute() {
         // Add puhrec related files, no need to match by itemname (just internally handled context).
         $this->add_related_files('mod_puhrec', 'intro', null);
+        $this->add_related_files('mod_puhrec', 'message', 'puhrec_message');
+        $this->add_related_files('mod_puhrec', 'audio', 'puhrec');
+
     }
 }
